@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trail Birder - Bird Call Identification</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f7fafc;
+            color: #2d3748;
+            max-width: 640px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            color: #276749;
+            margin-bottom: 8px;
+        }
+
+        p.subtitle {
+            color: #718096;
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background: #edf2f7;
+            margin-bottom: 12px;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 0;
+            color: #a0aec0;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .divider:not(:empty)::before {
+            margin-right: .75em;
+        }
+
+        .divider:not(:empty)::after {
+            margin-left: .75em;
+        }
+
+        button {
+            background-color: #2f855a;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: #276749;
+        }
+
+        button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        .btn-record {
+            background-color: #c53030;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-record:hover {
+            background-color: #9b2c2c;
+        }
+
+        .btn-record.recording {
+            background-color: #4a5568;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .record-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .record-status {
+            font-size: 0.9rem;
+            color: #e53e3e;
+            font-weight: 600;
+        }
+
+        #result {
+            margin-top: 24px;
+            padding: 18px;
+            border-radius: 6px;
+            background-color: #f0fff4;
+            border: 1px solid #c6f6d5;
+            display: none;
+        }
+
+        #result.error {
+            background-color: #fff5f5;
+            border-color: #feb2b2;
+            color: #c53030;
+        }
+
+        #result.not-found {
+            background-color: #fffaf0;
+            border-color: #feebc8;
+            color: #7b341e;
+        }
+
+        .species-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #22543d;
+            margin: 0 0 4px 0;
+        }
+
+        .meta-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .scientific-name {
+            font-style: italic;
+            color: #4a5568;
+            margin: 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            background-color: #e6fffa;
+            color: #234e52;
+            border: 1px solid #b2f5ea;
+        }
+
+        .badge.warning {
+            background-color: #fffaf0;
+            color: #9c4221;
+            border-color: #fbd38d;
+        }
+
+        .field-note-section {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            margin-top: 8px;
+        }
+
+        .field-note-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #718096;
+            margin-bottom: 4px;
+        }
+
+        .field-note {
+            color: #2d3748;
+            line-height: 1.55;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Trail Birder</h1>
+    <p class="subtitle">Identify bird calls using BirdNET and get AI field notes.</p>
+
+    <div class="card">
+        <!-- File Upload Form -->
+        <form id="upload-form">
+            <div class="form-group">
+                <label for="audio-input" class="section-title">Upload Audio File:</label>
+                <input type="file" id="audio-input" name="audio" accept="audio/*">
+            </div>
+            <button type="submit" id="upload-btn">Upload & Identify</button>
+        </form>
+
+        <div class="divider">OR</div>
+
+        <!-- Live Audio Recording -->
+        <div>
+            <div class="section-title">Live Microphone Recording:</div>
+            <div class="record-box">
+                <button type="button" id="record-btn" class="btn-record">🎙️ Record</button>
+                <span id="record-status" class="record-status"></span>
+            </div>
+        </div>
+
+        <!-- Result View -->
+        <div id="result">
+            <h2 class="species-title" id="species-name"></h2>
+            
+            <div class="meta-info" id="meta-info">
+                <p class="scientific-name" id="scientific-name"></p>
+                <span class="badge" id="confidence-badge"></span>
+            </div>
+
+            <div class="field-note-section" id="field-note-section">
+                <div class="field-note-title">AI Field Note</div>
+                <p class="field-note" id="field-note"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadForm = document.getElementById('upload-form');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('audio-input');
+
+        const recordBtn = document.getElementById('record-btn');
+        const recordStatus = document.getElementById('record-status');
+
+        const resultDiv = document.getElementById('result');
+        const speciesNameEl = document.getElementById('species-name');
+        const scientificNameEl = document.getElementById('scientific-name');
+        const confidenceBadgeEl = document.getElementById('confidence-badge');
+        const metaInfoDiv = document.getElementById('meta-info');
+        const fieldNoteSectionDiv = document.getElementById('field-note-section');
+        const fieldNoteEl = document.getElementById('field-note');
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordInterval = null;
+        let recordSeconds = 0;
+
+        // Shared function to send audio to /identify and display results
+        async function identifyAudio(audioBlobOrFile, filename) {
+            const formData = new FormData();
+            formData.append('audio', audioBlobOrFile, filename);
+
+            resultDiv.style.display = 'none';
+            resultDiv.className = '';
+
+            try {
+                const response = await fetch('/identify', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to identify audio');
+                }
+
+                if (data.species === 'No bird detected') {
+                    resultDiv.classList.add('not-found');
+                    speciesNameEl.textContent = 'No bird detected';
+                    metaInfoDiv.style.display = 'none';
+                    fieldNoteSectionDiv.style.display = 'none';
+                    resultDiv.style.display = 'block';
+                    return;
+                }
+
+                // Bird detected
+                speciesNameEl.textContent = data.species;
+
+                if (data.scientific_name) {
+                    scientificNameEl.textContent = data.scientific_name;
+                    scientificNameEl.style.display = 'inline';
+                } else {
+                    scientificNameEl.style.display = 'none';
+                }
+
+                if (data.confidence !== null && data.confidence !== undefined) {
+                    const pct = (data.confidence * 100).toFixed(1);
+                    confidenceBadgeEl.textContent = `Confidence: ${pct}% (${data.confidence})`;
+                    if (data.confidence < 0.4) {
+                        confidenceBadgeEl.classList.add('warning');
+                    } else {
+                        confidenceBadgeEl.classList.remove('warning');
+                    }
+                    confidenceBadgeEl.style.display = 'inline-block';
+                } else {
+                    confidenceBadgeEl.style.display = 'none';
+                }
+
+                metaInfoDiv.style.display = 'flex';
+
+                if (data.field_note) {
+                    fieldNoteEl.textContent = data.field_note;
+                    fieldNoteSectionDiv.style.display = 'block';
+                } else {
+                    fieldNoteSectionDiv.style.display = 'none';
+                }
+
+                resultDiv.style.display = 'block';
+            } catch (err) {
+                resultDiv.classList.add('error');
+                speciesNameEl.textContent = 'Error';
+                metaInfoDiv.style.display = 'none';
+                fieldNoteSectionDiv.style.display = 'block';
+                fieldNoteEl.textContent = err.message;
+                resultDiv.style.display = 'block';
+            }
+        }
+
+        // File upload event handler
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!fileInput.files.length) {
+                alert('Please select an audio file first.');
+                return;
+            }
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Analyzing...';
+
+            try {
+                await identifyAudio(fileInput.files[0], fileInput.files[0].name);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload & Identify';
+            }
+        });
+
+        // Record / Stop button handler using MediaRecorder API
+        recordBtn.addEventListener('click', async () => {
+            // If already recording, stop it
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                return;
+            }
+
+            // Start recording
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // Determine supported mime type
+                let mimeType = 'audio/webm';
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    mimeType = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                    mimeType = 'audio/ogg;codecs=opus';
+                }
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstart = () => {
+                    recordSeconds = 0;
+                    recordStatus.textContent = '● Recording (0s)...';
+                    recordBtn.textContent = '⏹️ Stop & Identify';
+                    recordBtn.classList.add('recording');
+                    uploadBtn.disabled = true;
+
+                    recordInterval = setInterval(() => {
+                        recordSeconds++;
+                        recordStatus.textContent = `● Recording (${recordSeconds}s)...`;
+                    }, 1000);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    clearInterval(recordInterval);
+                    recordStatus.textContent = 'Processing recording...';
+                    recordBtn.textContent = '🎙️ Record';
+                    recordBtn.classList.remove('recording');
+                    recordBtn.disabled = true;
+
+                    // Stop microphone tracks
+                    stream.getTracks().forEach(track => track.stop());
+
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    const fileExt = mimeType.includes('ogg') ? 'recording.ogg' : 'recording.webm';
+
+                    try {
+                        await identifyAudio(audioBlob, fileExt);
+                    } finally {
+                        recordStatus.textContent = '';
+                        recordBtn.disabled = false;
+                        uploadBtn.disabled = false;
+                    }
+                };
+
+                mediaRecorder.start();
+            } catch (err) {
+                alert('Microphone access failed: ' + err.message);
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+</html>
