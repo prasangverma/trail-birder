@@ -193,6 +193,17 @@
             border-color: #fbd38d;
         }
 
+        .low-conf-note {
+            display: none;
+            color: #9c4221;
+            background: #fffaf0;
+            border: 1px solid #fbd38d;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
         .field-note-section {
             border-top: 1px solid #e2e8f0;
             padding-top: 12px;
@@ -249,6 +260,8 @@
                 <span class="badge" id="confidence-badge"></span>
             </div>
 
+            <div id="low-conf-note" class="low-conf-note"></div>
+
             <div class="field-note-section" id="field-note-section">
                 <div class="field-note-title">AI Field Note</div>
                 <p class="field-note" id="field-note"></p>
@@ -269,6 +282,7 @@
         const scientificNameEl = document.getElementById('scientific-name');
         const confidenceBadgeEl = document.getElementById('confidence-badge');
         const metaInfoDiv = document.getElementById('meta-info');
+        const lowConfNoteEl = document.getElementById('low-conf-note');
         const fieldNoteSectionDiv = document.getElementById('field-note-section');
         const fieldNoteEl = document.getElementById('field-note');
 
@@ -284,6 +298,7 @@
 
             resultDiv.style.display = 'none';
             resultDiv.className = '';
+            lowConfNoteEl.style.display = 'none';
 
             try {
                 const response = await fetch('/identify', {
@@ -301,12 +316,13 @@
                     resultDiv.classList.add('not-found');
                     speciesNameEl.textContent = 'No bird detected';
                     metaInfoDiv.style.display = 'none';
+                    lowConfNoteEl.style.display = 'none';
                     fieldNoteSectionDiv.style.display = 'none';
                     resultDiv.style.display = 'block';
                     return;
                 }
 
-                // Bird detected
+                // Bird detected / Top guess
                 speciesNameEl.textContent = data.species;
 
                 if (data.scientific_name) {
@@ -331,6 +347,13 @@
 
                 metaInfoDiv.style.display = 'flex';
 
+                if (data.note) {
+                    lowConfNoteEl.textContent = 'ℹ️ Note: ' + data.note;
+                    lowConfNoteEl.style.display = 'block';
+                } else {
+                    lowConfNoteEl.style.display = 'none';
+                }
+
                 if (data.field_note) {
                     fieldNoteEl.textContent = data.field_note;
                     fieldNoteSectionDiv.style.display = 'block';
@@ -343,6 +366,7 @@
                 resultDiv.classList.add('error');
                 speciesNameEl.textContent = 'Error';
                 metaInfoDiv.style.display = 'none';
+                lowConfNoteEl.style.display = 'none';
                 fieldNoteSectionDiv.style.display = 'block';
                 fieldNoteEl.textContent = err.message;
                 resultDiv.style.display = 'block';
@@ -377,9 +401,26 @@
                 return;
             }
 
-            // Start recording
+            // Start recording with raw audio settings (disabling echo cancellation, noise suppression, AGC)
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Microphone API is unavailable. Please ensure you are visiting http://localhost:5000 (browsers block microphones on non-localhost HTTP addresses).');
+                    return;
+                }
+
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        }
+                    });
+                } catch (constraintErr) {
+                    console.warn('Advanced audio constraints failed, falling back to basic audio:', constraintErr);
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                }
 
                 // Determine supported mime type
                 let mimeType = 'audio/webm';
@@ -435,7 +476,13 @@
 
                 mediaRecorder.start();
             } catch (err) {
-                alert('Microphone access failed: ' + err.message);
+                let msg = err.message;
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    msg = 'Microphone permission was denied. Please click the tune/lock/microphone icon in your browser URL bar and change permission to "Allow".';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    msg = 'No microphone device was detected on your system.';
+                }
+                alert(msg);
                 console.error(err);
             }
         });
