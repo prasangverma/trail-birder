@@ -217,5 +217,7 @@ marimo/_lsp/
 __marimo__/
 
 # Streamlit
-.streamlit/secrets.toml
 samples/*.mp3
+
+# Debug recordings
+debug/

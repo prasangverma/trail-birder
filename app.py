@@ -1,6 +1,7 @@
 import os
 import subprocess
 import tempfile
+import shutil
 import requests
 import birdnet
 from flask import Flask, render_template, request, jsonify
@@ -121,6 +122,25 @@ def identify():
                 predictions = model.predict(wav_path)
             else:
                 raise pred_err
+
+        # Save the converted WAV to debug/last_recording.wav so it can be listened to
+        os.makedirs("debug", exist_ok=True)
+        debug_wav_path = os.path.join("debug", "last_recording.wav")
+        if wav_path and os.path.exists(wav_path):
+            shutil.copy2(wav_path, debug_wav_path)
+        elif predict_path and os.path.exists(predict_path):
+            if file_ext.lower() == ".wav":
+                shutil.copy2(predict_path, debug_wav_path)
+            else:
+                try:
+                    subprocess.run(
+                        ["ffmpeg", "-y", "-i", predict_path, "-ar", "48000", "-ac", "1", debug_wav_path],
+                        check=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                except Exception:
+                    pass
 
         df = predictions.to_dataframe()
 
